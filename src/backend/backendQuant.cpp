@@ -5,14 +5,26 @@
 #include <cstring>
 #include <vector>
 
-void CBackendQuant::matmulQuant(float* o, float* x, float* w_quant, float* scale, int n, int d) { 
-/**
-* TODO： 执行量化矩阵-向量乘法（MatMul），其中 w_quant 以 int8 格式存储，并使用 scale 进行反量化
-* @param[out] o  计算结果输出向量，大小为 d。计算公式： o(d,1) =  w_quant (d,n) × x(n,1)
-* @param[in]  x  输入向量，大小为 n
-* @param[in]  w_quant 量化权重矩阵，大小为 d * n，传入float* 指针， 存储为 int8 类型
-* @param[in]  scale 反量化缩放因子
-* @param[in]  n  输入向量 x 的维度（ w_quant 的列数）
-* @param[in]  d  输出向量 o 的维度（ w_quant 的行数）
-**/
+void CBackendQuant::matmulQuant(float* o, float* x, float* w_quant, float* scale, int n, int d) {
+    // 将 float* 指针转换为 int8* 来访问量化数据
+    int8_t* w_quant_int8 = (int8_t*)w_quant;
+
+    // 执行量化矩阵-向量乘法：o = w_quant * x
+    // w_quant 是 d×n 的矩阵（按行存储），存储为 int8
+    // x 是输入向量，大小为 n
+    // o 是输出向量，大小为 d
+    // scale 是反量化缩放因子（每行一个）
+
+    for (int i = 0; i < d; i++) {
+        float sum = 0.0f;
+        for (int j = 0; j < n; j++) {
+            // 从量化矩阵中读取 int8 值
+            int8_t w_quant_val = w_quant_int8[i * n + j];
+            // 反量化：int8 值乘以缩放因子
+            float w_float = (float)w_quant_val * scale[i];
+            // 累加乘积
+            sum += w_float * x[j];
+        }
+        o[i] = sum;
+    }
 }
