@@ -30,38 +30,29 @@ void CBackend::softmax(float* x, int n) {
     }
 }
 
-
-void CBackend::matmul(float* o, float* x, float* w, int n, int d) {
-    // 向量-矩阵乘法：o = x^T @ w
-    // o 是输出向量，大小为 d
-    // x 是输入向量，大小为 n
-    // w 是权重矩阵，大小为 n×d（按行存储）
-
+void CBackend::matmul(float* xout, float* x, float* w, int n, int d) {
     for (int i = 0; i < d; i++) {
-        o[i] = 0.0f;
+        float sum = 0.0f;
         for (int j = 0; j < n; j++) {
-            o[i] += x[j] * w[j * d + i];
+            sum += w[i * n + j] * x[j];
         }
+        xout[i] = sum;
     }
 }
 
+void CBackend::rmsnorm(float* o, float* x, float* weight, int size) {
+    const float eps = 1e-5f;
+    float sum = 0.0f;
 
-void CBackend::rmsnorm(float* y, float* x, float* w, int n) {
-    // RMS 归一化：y = (x / RMS(x)) * w
-    // 其中 RMS(x) = sqrt(mean(x^2)) = sqrt(sum(x^2) / n)
-
-    // 计算 sum(x^2)
-    float sum_squared = 0.0f;
-    for (int i = 0; i < n; i++) {
-        sum_squared += x[i] * x[i];
+    for (int i = 0; i < size; i++) {
+        sum += x[i] * x[i];
     }
 
-    // 计算 RMS
-    float rms = sqrtf(sum_squared / n + 1e-5f);  // 加上小的 epsilon 避免除以零
+    float mean = sum / size;
+    float scale = 1.0f / sqrtf(mean + eps);
 
-    // 应用归一化和权重缩放
-    for (int i = 0; i < n; i++) {
-        y[i] = (x[i] / rms) * w[i];
+    for (int i = 0; i < size; i++) {
+        o[i] = x[i] * scale * weight[i];
     }
 }
 
