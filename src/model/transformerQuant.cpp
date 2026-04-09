@@ -14,28 +14,51 @@
 
 
 void computeGlobalScale(float* start1, float* end1, float* start2, float* end2, float& scale) {
-    /**    
-     *TODO: 计算两个连续内存块中的全局缩放因子, 计算两块内存中所有元素的最大绝对值max，返回缩放因子scale=max/127.0
-     * 
-     * @param[in]  start1 指向第一个连续内存块起始位置的指针
-     * @param[in]  end1 指向第一个连续内存块结束位置的指针（不包含该位置）
-     * @param[in]  start2 指向第二个连续内存块起始位置的指针
-     * @param[in]  end2 指向第二个连续内存块结束位置的指针（不包含该位置）
-     * @param[out] scale 计算得到的缩放因子，存储在该变量中
-     *
-     **/
+    // 计算两个连续内存块中所有元素的最大绝对值
+    float max_abs = 0.0f;
+
+    // 遍历第一个内存块
+    for (float* ptr = start1; ptr < end1; ptr++) {
+        float abs_val = std::fabs(*ptr);
+        if (abs_val > max_abs) {
+            max_abs = abs_val;
+        }
     }
+
+    // 遍历第二个内存块
+    for (float* ptr = start2; ptr < end2; ptr++) {
+        float abs_val = std::fabs(*ptr);
+        if (abs_val > max_abs) {
+            max_abs = abs_val;
+        }
+    }
+
+    // 计算缩放因子：scale = max_abs / 127.0
+    // 这样最大值会被映射到 int8 的 ±127 范围
+    scale = max_abs / 127.0f;
+}
 void quantizeToInt8(float* src, int8_t* dst, size_t size, float scale) {
-     /**    
-     *TODO: 将浮点数数组量化为 int8_t 数组
-     * 
-     * @param[in]  src 指向输入数据（浮点数数组）的指针，表示要量化的原始数据所在的内存空间
-     * @param[out] dst 指向输出数据（int8 数组）的指针，量化后的数据会存储到这个内存空间
-     * @param[in]  size 数组大小，src 和 dst 中的元素数量
-     * @param[in]  scale 量化缩放因子，用于将浮点数转换为 int8_t，由 computeGlobalScale计算得到
-     * 
-     **/
+    // 将浮点数数组量化为 int8_t 数组
+    // 量化公式：dst[i] = (int8_t)round(src[i] / scale)
+    // 值会被限制在 [-128, 127] 范围内
+
+    for (size_t i = 0; i < size; i++) {
+        // 计算量化值
+        float quantized_val = src[i] / scale;
+
+        // 四舍五入
+        int32_t rounded_val = (int32_t)std::round(quantized_val);
+
+        // 限制在 int8 范围内 [-128, 127]
+        if (rounded_val > 127) {
+            rounded_val = 127;
+        } else if (rounded_val < -128) {
+            rounded_val = -128;
+        }
+
+        dst[i] = (int8_t)rounded_val;
     }
+}
     
 
 void writeDataToFile(std::ofstream& outFile, float* basePtr, float* currentPtr) {
